@@ -125,15 +125,20 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
       
       for (let i = 0; i < totalPages; i++) {
         const pageDiv = document.createElement('div');
+        // Add 'fixed' class to ALL pages to prevent Turn.js from removing them from DOM
+        // This ensures pages 6 and 7 (inside back cover and back cover) stay in DOM
+        let classes = 'turn-page fixed';
+        
         // Add 'hard' class to front and back covers for hard cover effect
         if (isHardCover && (i === 0 || i === totalPages - 1)) {
-          pageDiv.className = 'turn-page hard';
+          classes += ' hard';
           console.log(`Page ${i}: Added 'hard' class (${i === 0 ? 'front' : 'back'} cover)`);
-        } else {
-          pageDiv.className = 'turn-page';
         }
+        
+        pageDiv.className = classes;
         pageDiv.setAttribute('data-page-index', i.toString());
         turnDiv.appendChild(pageDiv);
+        console.log(`Created page ${i} with classes: "${classes}"`);
       }
 
       console.log(`Created ${totalPages} page divs`);
@@ -286,48 +291,48 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
   }, []);
 
   // Render pages into Turn.js after initialization
+  // This effect needs to run whenever we might need to render new pages
   useEffect(() => {
     if (!turnInstanceRef.current || !turnContainerRef.current) {
       console.log('Skipping page rendering: no instance or container');
       return;
     }
 
-    console.log('Rendering pages into Turn.js...');
+    console.log('=== RENDERING PAGES INTO TURN.JS ===');
+    console.log('Current page:', currentPage, 'Total pages:', totalPages);
 
     try {
-      // Find all page divs - Try multiple selectors since Turn.js transforms the DOM
-      let pageElements = turnContainerRef.current.querySelectorAll('.page');
+      // Get the range of pages that should be loaded for the current page
+      // Turn.js uses range() to determine which pages should be in memory
+      const range = turnInstanceRef.current.turn('range', currentPage);
+      console.log(`Turn.js range for page ${currentPage}:`, range);
       
-      // Fallback to .turn-page if .page doesn't exist yet
-      if (!pageElements || pageElements.length === 0) {
-        pageElements = turnContainerRef.current.querySelectorAll('.turn-page');
+      // Render all pages in the range
+      for (let pageNumber = range[0]; pageNumber <= range[1]; pageNumber++) {
+        const pageIndex = pageNumber - 1; // Convert to 0-based
+        
+        // Find the page element in the DOM
+        const pageElement = turnContainerRef.current.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
+        
+        if (pageElement) {
+          // Check if page already has content (to avoid re-rendering unnecessarily)
+          if (pageElement.innerHTML.trim() === '') {
+            console.log(`Rendering page ${pageNumber} (index ${pageIndex})`);
+            const pageContent = renderPageAsHTML(pageIndex);
+            pageElement.innerHTML = pageContent;
+          } else {
+            console.log(`Page ${pageNumber} already has content, skipping`);
+          }
+        } else {
+          console.warn(`Page element not found for pageIndex ${pageIndex}`);
+        }
       }
-      
-      if (!pageElements || pageElements.length === 0) {
-        console.error('No page elements found!');
-        return;
-      }
 
-      console.log(`Found ${pageElements.length} page elements (expected ${totalPages})`);
-
-      // Log the actual structure
-      console.log('Turn.js container children:');
-      Array.from(turnContainerRef.current.children).forEach((child, idx) => {
-        console.log(`  Child ${idx}: tag=${child.tagName}, class="${child.className}", children=${child.children.length}`);
-      });
-
-      pageElements.forEach((pageElement, index) => {
-        // Render page content as HTML
-        const pageContent = renderPageAsHTML(index);
-        (pageElement as HTMLElement).innerHTML = pageContent;
-        console.log(`Rendered page ${index}, content length: ${pageContent.length}`);
-      });
-
-      console.log('Pages rendered into Turn.js successfully');
+      console.log('=== PAGE RENDERING COMPLETE ===');
     } catch (error) {
       console.error('Error rendering pages:', error);
     }
-  }, [totalPages, pages, coverCustomization, pageCustomization]);
+  }, [currentPage, totalPages, pages, coverCustomization, pageCustomization]);
 
   // Watch for changes to props and trigger Turn.js refresh
   useEffect(() => {
@@ -786,7 +791,20 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
       }
 
       // Filler page
-      return `<div class="w-full h-full shadow-2xl relative rounded-lg" style="background-color: ${pageCustomization.color};"></div>`;
+      // Generate material pattern HTML (same as content pages)
+      let fillerMaterialPattern = '';
+      if (pageCustomization.material === 'lined') {
+        const lines = Array.from({ length: 25 }, (_, i) => 
+          `<div style="height: 1px; background-color: rgba(147, 197, 253, 0.4);"></div>`
+        ).join('');
+        fillerMaterialPattern = `<div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-around; padding: 3rem 2rem; pointer-events: none;">${lines}</div>`;
+      } else if (pageCustomization.material === 'dotted') {
+        fillerMaterialPattern = `<div style="position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(circle, #94a3b8 1px, transparent 1px); background-size: 24px 24px;"></div>`;
+      } else if (pageCustomization.material === 'grid') {
+        fillerMaterialPattern = `<div style="position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px); background-size: 24px 24px;"></div>`;
+      }
+      
+      return `<div class="w-full h-full shadow-2xl relative rounded-lg" style="background-color: ${pageCustomization.color};">${fillerMaterialPattern}</div>`;
     } catch (error) {
       console.error(`Error rendering page ${pageIndex}:`, error);
       return `<div class="w-full h-full bg-red-50 flex items-center justify-center"><p class="text-red-600">Error rendering page</p></div>`;
