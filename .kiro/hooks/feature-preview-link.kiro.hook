@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Feature Preview Link",
+  "description": "When the agent finishes implementing a feature successfully, automatically provide a preview link to view the latest changes in the browser",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The agent has just finished responding. If the response indicates successful feature implementation (contains success indicators like \"successfully implemented\", \"completed\", \"done\", or similar positive completion messages), provide a preview link for the user to view the changes. The development server runs on http://localhost:3000. Format your response as a helpful message with the preview link."
+  }
+}

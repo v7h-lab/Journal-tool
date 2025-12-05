@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FloatingToolbar } from './floating-toolbar';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import type { JournalPage, PageCustomization } from '../App';
@@ -21,18 +21,48 @@ const HANDWRITTEN_FONTS = [
 ];
 
 export function PageEditor({ pages, currentPageIndex, setCurrentPageIndex, updatePage, addPage, pageCustomization }: Props) {
-  const [selectedFont, setSelectedFont] = useState(HANDWRITTEN_FONTS[0].value);
-  const [fontSize, setFontSize] = useState(18);
+  // Load font settings from localStorage
+  const [selectedFont, setSelectedFont] = useState(() => {
+    const saved = localStorage.getItem('journal-font');
+    return saved || HANDWRITTEN_FONTS[0].value;
+  });
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('journal-font-size');
+    return saved ? parseInt(saved) : 18;
+  });
   const [showImageInput, setShowImageInput] = useState(false);
   const [showVideoInput, setShowVideoInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Save font settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('journal-font', selectedFont);
+  }, [selectedFont]);
+
+  useEffect(() => {
+    localStorage.setItem('journal-font-size', fontSize.toString());
+  }, [fontSize]);
+
   const currentPage = pages[currentPageIndex];
 
+  const MAX_LINES = 12; // Maximum lines that fit on a page in preview mode
+  const APPROX_CHARS_PER_LINE = 50; // Approximate characters per line at 18px
+  const MAX_CHARACTERS = MAX_LINES * APPROX_CHARS_PER_LINE; // ~600 characters
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updatePage(currentPage.id, { content: e.target.value });
+    const newContent = e.target.value;
+    const lineCount = newContent.split('\n').length;
+    
+    // Restrict content based on line count and character limit
+    if (lineCount <= MAX_LINES && newContent.length <= MAX_CHARACTERS) {
+      updatePage(currentPage.id, { content: newContent });
+    } else if (lineCount > MAX_LINES) {
+      // Prevent adding new lines beyond the limit
+      const lines = newContent.split('\n').slice(0, MAX_LINES);
+      updatePage(currentPage.id, { content: lines.join('\n') });
+    }
   };
 
   const addImage = () => {
@@ -125,11 +155,23 @@ export function PageEditor({ pages, currentPageIndex, setCurrentPageIndex, updat
         </button>
       </div>
 
-      {/* Page Canvas */}
-      <div className="relative w-full max-w-4xl">
+      {/* Page Canvas - Match preview mode dimensions (WYSIWYG) */}
+      <div className="flex flex-col items-center gap-4 w-full">
+        {/* Line and Character Counter - Outside page */}
+        <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg text-sm text-gray-700 shadow-md">
+          <div className="flex gap-4">
+            <span>Lines: {currentPage.content.split('\n').length} / {MAX_LINES}</span>
+            <span>Characters: {currentPage.content.length} / {MAX_CHARACTERS}</span>
+          </div>
+        </div>
+
         <div
-          className="relative w-full aspect-[8.5/11] rounded-lg shadow-2xl overflow-hidden"
-          style={{ backgroundColor: pageCustomization.color }}
+          className="relative rounded-lg shadow-2xl overflow-hidden"
+          style={{ 
+            backgroundColor: pageCustomization.color,
+            width: '460px', // Match preview page width (single page in spread)
+            height: '596px' // Match preview page height (11:17 aspect ratio)
+          }}
         >
           {/* Page Material Background */}
           {pageCustomization.material === 'lined' && (
@@ -164,6 +206,7 @@ export function PageEditor({ pages, currentPageIndex, setCurrentPageIndex, updat
             value={currentPage.content}
             onChange={handleContentChange}
             placeholder="Start writing your thoughts..."
+            maxLength={MAX_CHARACTERS}
             className="absolute inset-0 w-full h-full p-12 bg-transparent resize-none outline-none"
             style={{
               fontFamily: selectedFont,
@@ -172,6 +215,7 @@ export function PageEditor({ pages, currentPageIndex, setCurrentPageIndex, updat
               color: '#1a1a1a'
             }}
           />
+
 
           {/* Images */}
           {currentPage.images.map((image) => (
@@ -226,7 +270,7 @@ export function PageEditor({ pages, currentPageIndex, setCurrentPageIndex, updat
             </div>
           ))}
         </div>
-      </div>
+      </div> {/* Close flex container */}
 
       {/* Image Input Modal */}
       {showImageInput && (

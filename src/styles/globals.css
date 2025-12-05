@@ -189,3 +189,27 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Turn.js styles */
+.flipbook {
+  position: relative;
+}
+
+.flipbook .page {
+  display: none;
+}
+
+.flipbook .page.hard {
+  /* Hard pages use CSS3 transitions instead of gradients */
+  transition: transform 0.8s ease-in-out;
+}
+
+/* Disable gradient bending for hard pages */
+.flipbook .page.hard .gradient {
+  display: none !important;
+}
+
+/* Turn.js shadow container */
+.flipbook .shadow {
+  transition: box-shadow 0.5s;
+}

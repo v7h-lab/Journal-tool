@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { JournalCover } from './components/journal-cover';
 import { PageEditor } from './components/page-editor';
-import { PreviewMode } from './components/preview-mode';
+import { TurnJsPreview } from './components/turnjs-preview';
 import { Book, Edit3, Eye } from 'lucide-react';
 
 export interface JournalPage {
@@ -23,6 +23,7 @@ export interface CoverCustomization {
     y: number;
   };
   previewBackground: string;
+  coverType: 'soft' | 'hard';
 }
 
 export interface PageCustomization {
@@ -34,29 +35,60 @@ export default function App() {
   const [mode, setMode] = useState<'customize' | 'edit' | 'preview'>('edit');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   
-  const [coverCustomization, setCoverCustomization] = useState<CoverCustomization>({
-    color: '#8B4513',
-    stickers: [],
-    texture: 'leather',
-    title: {
-      text: 'My Journal',
-      color: '#FFD700',
-      size: 48,
-      font: 'serif',
-      y: 30
-    },
-    previewBackground: 'default'
+  // Load from localStorage or use defaults
+  const [coverCustomization, setCoverCustomization] = useState<CoverCustomization>(() => {
+    const saved = localStorage.getItem('journal-cover');
+    const parsed = saved ? JSON.parse(saved) : null;
+    
+    // Ensure coverType exists (migration for existing users)
+    if (parsed && !parsed.coverType) {
+      parsed.coverType = 'hard';
+    }
+    
+    return parsed || {
+      color: '#8B4513',
+      stickers: [],
+      texture: 'leather',
+      title: {
+        text: 'My Journal',
+        color: '#FFD700',
+        size: 48,
+        font: 'serif',
+        y: 30
+      },
+      previewBackground: 'default',
+      coverType: 'hard'
+    };
   });
 
-  const [pageCustomization, setPageCustomization] = useState<PageCustomization>({
-    color: '#FFF8DC',
-    material: 'lined'
+  const [pageCustomization, setPageCustomization] = useState<PageCustomization>(() => {
+    const saved = localStorage.getItem('journal-page-customization');
+    return saved ? JSON.parse(saved) : {
+      color: '#FFF8DC',
+      material: 'lined'
+    };
   });
 
-  const [pages, setPages] = useState<JournalPage[]>([
-    { id: '1', content: '', images: [], videos: [] },
-    { id: '2', content: '', images: [], videos: [] }
-  ]);
+  const [pages, setPages] = useState<JournalPage[]>(() => {
+    const saved = localStorage.getItem('journal-pages');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', content: '', images: [], videos: [] },
+      { id: '2', content: '', images: [], videos: [] }
+    ];
+  });
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem('journal-cover', JSON.stringify(coverCustomization));
+  }, [coverCustomization]);
+
+  useEffect(() => {
+    localStorage.setItem('journal-page-customization', JSON.stringify(pageCustomization));
+  }, [pageCustomization]);
+
+  useEffect(() => {
+    localStorage.setItem('journal-pages', JSON.stringify(pages));
+  }, [pages]);
 
   const updatePage = (pageId: string, updates: Partial<JournalPage>) => {
     setPages(pages.map(page => 
@@ -145,7 +177,7 @@ export default function App() {
         )}
 
         {mode === 'preview' && (
-          <PreviewMode
+          <TurnJsPreview
             pages={pages}
             coverCustomization={coverCustomization}
             pageCustomization={pageCustomization}

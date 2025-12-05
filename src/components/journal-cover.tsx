@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Sparkles, Plus, Trash2, Type, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { CoverCustomization, PageCustomization } from '../App';
@@ -67,6 +67,7 @@ export const PREVIEW_BACKGROUNDS = [
 
 export function JournalCover({ coverCustomization, setCoverCustomization, pageCustomization, setPageCustomization }: Props) {
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
+  const coverRef = useRef<HTMLDivElement>(null);
 
   const addSticker = (emoji: string) => {
     const newSticker = {
@@ -113,10 +114,21 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
     <div className="grid lg:grid-cols-2 gap-8">
       {/* Preview */}
       <div className="flex flex-col items-center gap-6">
-        <h2 className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-600" />
-          Cover Preview
-        </h2>
+        <div className="flex items-center gap-4">
+          <h2 className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-600" />
+            Cover Preview
+          </h2>
+          <button
+            onClick={() => {
+              console.log('=== TEST BUTTON CLICKED ===');
+              console.log('Current stickers:', coverCustomization.stickers);
+            }}
+            className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Test Console
+          </button>
+        </div>
         
         <div 
             className="p-10 rounded-xl w-full flex justify-center items-center"
@@ -127,6 +139,7 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
             }}
         >
             <motion.div
+            ref={coverRef}
             className="relative w-full max-w-md aspect-[3/4] rounded-lg shadow-2xl cursor-pointer overflow-hidden"
             style={{
                 backgroundColor: coverCustomization.color,
@@ -163,21 +176,51 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
                 key={sticker.id}
                 drag
                 dragMomentum={false}
-                onDragEnd={(_, info) => {
-                    updateSticker(sticker.id, {
-                        x: sticker.x + (info.delta.x / 4), // simple heuristic
-                        y: sticker.y + (info.delta.y / 6)
-                    });
+                dragElastic={0}
+                dragConstraints={coverRef}
+                onDragEnd={(event, info) => {
+                    // Get the cover container dimensions to calculate percentage
+                    const coverElement = coverRef.current;
+                    
+                    if (coverElement) {
+                        const rect = coverElement.getBoundingClientRect();
+                        
+                        // Use offset - the total distance from start position
+                        const offsetXPercent = (info.offset.x / rect.width) * 100;
+                        const offsetYPercent = (info.offset.y / rect.height) * 100;
+                        
+                        // Calculate new position with bounds (keep within 0-100%)
+                        const newX = Math.max(0, Math.min(100, sticker.x + offsetXPercent));
+                        const newY = Math.max(0, Math.min(100, sticker.y + offsetYPercent));
+                        
+                        console.log('Drag ended:', {
+                            emoji: sticker.emoji,
+                            offset: info.offset,
+                            offsetPercent: { x: offsetXPercent, y: offsetYPercent },
+                            oldPos: { x: sticker.x, y: sticker.y },
+                            newPos: { x: newX, y: newY }
+                        });
+                        
+                        updateSticker(sticker.id, {
+                            x: newX,
+                            y: newY
+                        });
+                    }
                 }}
+                animate={{ x: 0, y: 0 }}
+                transition={{ duration: 0 }}
                 className="absolute cursor-move select-none"
                 style={{
                     left: `${sticker.x}%`,
                     top: `${sticker.y}%`,
                     fontSize: `${sticker.size}px`,
-                    rotate: `${sticker.rotation}deg`
+                    rotate: `${sticker.rotation}deg`,
+                    touchAction: 'none'
                 }}
                 whileHover={{ scale: 1.1 }}
-                onClick={() => setSelectedSticker(sticker.id)}
+                onClick={(e) => {
+                    setSelectedSticker(sticker.id);
+                }}
                 >
                 {sticker.emoji}
                 </motion.div>
@@ -256,6 +299,38 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Cover Type Selection */}
+          <div className="mb-6">
+            <label className="block mb-2">Cover Type</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCoverCustomization({ ...coverCustomization, coverType: 'hard' })}
+                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                  coverCustomization.coverType === 'hard'
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-gray-200 hover:border-amber-300'
+                }`}
+              >
+                Hard Cover
+              </button>
+              <button
+                onClick={() => setCoverCustomization({ ...coverCustomization, coverType: 'soft' })}
+                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                  coverCustomization.coverType === 'soft'
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-gray-200 hover:border-amber-300'
+                }`}
+              >
+                Soft Cover
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {coverCustomization.coverType === 'hard' 
+                ? 'Hard covers are thicker and more durable with a rigid feel' 
+                : 'Soft covers are flexible and lightweight with a softer appearance'}
+            </p>
           </div>
 
           {/* Preview Background Selection */}
