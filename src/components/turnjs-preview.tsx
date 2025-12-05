@@ -540,55 +540,27 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
 
   /**
    * Calculate position information for the position indicator
-   * Returns spread number, total spreads, and descriptive label
+   * Returns page info or null if on cover pages
    */
-  const calculatePositionInfo = useCallback((): {
-    spreadNumber: number;
-    totalSpreads: number;
-    label: string;
-  } => {
-    // Front Cover (page 1 in Turn.js 1-based indexing)
+  const calculatePositionInfo = useCallback((): string | null => {
+    // Don't show indicator for front cover (page 1)
     if (currentPage === 1) {
-      return {
-        spreadNumber: 1,
-        totalSpreads: Math.ceil(totalPages / 2),
-        label: 'Front Cover'
-      };
+      return null;
     }
 
-    // Back Cover (last page)
+    // Don't show indicator for back cover (last page)
     if (currentPage === totalPages) {
-      return {
-        spreadNumber: Math.ceil(totalPages / 2),
-        totalSpreads: Math.ceil(totalPages / 2),
-        label: 'Back Cover'
-      };
+      return null;
     }
 
-    // Calculate spread number (2 pages per spread in double-page mode)
-    // Turn.js shows pages in pairs, so spread = ceil(page / 2)
-    const spreadNumber = Math.ceil(currentPage / 2);
-    const totalSpreads = Math.ceil(totalPages / 2);
-
-    // For content pages, show page numbers for both left and right pages
-    // In double-page mode, odd pages are on the right, even pages are on the left
-    // When viewing a spread, we see the current page and potentially the next page
-    
-    // Determine if we're on inside covers
+    // Don't show for inside front cover (page 2)
     if (currentPage === 2) {
-      return {
-        spreadNumber,
-        totalSpreads,
-        label: 'Inside Front Cover'
-      };
+      return null;
     }
 
+    // Don't show for inside back cover
     if (currentPage === insideBackCoverIndex + 1) {
-      return {
-        spreadNumber,
-        totalSpreads,
-        label: 'Inside Back Cover'
-      };
+      return null;
     }
 
     // For content pages, calculate the actual content page numbers
@@ -605,31 +577,15 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
     const isRightContent = rightContentPage >= 0 && rightContentPage < pages.length;
 
     if (isLeftContent && isRightContent) {
-      return {
-        spreadNumber,
-        totalSpreads,
-        label: `Pages ${leftContentPage + 1} - ${rightContentPage + 1}`
-      };
+      return `Page ${leftContentPage + 1} - ${rightContentPage + 1}`;
     } else if (isLeftContent) {
-      return {
-        spreadNumber,
-        totalSpreads,
-        label: `Page ${leftContentPage + 1}`
-      };
+      return `Page ${leftContentPage + 1}`;
     } else if (isRightContent) {
-      return {
-        spreadNumber,
-        totalSpreads,
-        label: `Page ${rightContentPage + 1}`
-      };
+      return `Page ${rightContentPage + 1}`;
     }
 
-    // Fallback for any other case
-    return {
-      spreadNumber,
-      totalSpreads,
-      label: `Spread ${spreadNumber}`
-    };
+    // Don't show for other pages
+    return null;
   }, [currentPage, totalPages, pages.length, insideBackCoverIndex]);
 
   /**
@@ -1156,7 +1112,7 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
 
   return (
     <div 
-      className="flex flex-col items-center gap-8 w-full h-full justify-center py-10 overflow-auto"
+      className="relative flex flex-col items-center gap-8 w-full h-full justify-center py-10 overflow-auto"
       style={{
         backgroundImage: PREVIEW_BACKGROUNDS.find(b => b.id === coverCustomization.previewBackground)?.value,
         backgroundSize: 'cover',
@@ -1172,11 +1128,15 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
         </div>
       )}
       
-      {/* Debug Info */}
-      <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-2 rounded text-sm">
-        <p>Debug: Total Pages = {totalPages}, Current Page = {currentPage}, Has Instance = {turnInstanceRef.current ? 'Yes' : 'No'}</p>
-      </div>
-      
+      {/* Position Indicator - Absolutely positioned overlay to prevent layout shifts */}
+      {calculatePositionInfo() && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm pointer-events-none z-20">
+          <p className="text-gray-600 text-sm">
+            {calculatePositionInfo()}
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-center gap-6 w-full max-w-7xl px-4">
         {/* Previous Button */}
         <button
@@ -1192,7 +1152,7 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
         {/* Turn.js Book Container */}
         <div 
           ref={turnContainerRef}
-          className="relative w-full max-w-5xl bg-white/10 border-2 border-dashed border-white/30"
+          className="relative w-full max-w-5xl"
           style={{ 
             perspective: '2000px',
             height: '600px',
@@ -1221,18 +1181,6 @@ export function TurnJsPreview({ pages, coverCustomization, pageCustomization }: 
         >
           <ChevronRight className="w-6 h-6" />
         </button>
-      </div>
-
-      {/* Position Indicator */}
-      <div className="text-center bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
-        <div className="flex flex-col gap-1">
-          <p className="text-gray-800 font-medium text-lg">
-            {calculatePositionInfo().label}
-          </p>
-          <p className="text-gray-600 text-sm">
-            Spread {calculatePositionInfo().spreadNumber} of {calculatePositionInfo().totalSpreads}
-          </p>
-        </div>
       </div>
 
       {/* Load Google Fonts for preview */}

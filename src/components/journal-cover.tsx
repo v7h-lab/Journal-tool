@@ -41,29 +41,35 @@ export const PREVIEW_BACKGROUNDS = [
   { 
     id: 'default', 
     name: 'Default', 
-    value: 'linear-gradient(to bottom right, #fffbeb, #fff7ed, #fef3c7)'
+    value: 'linear-gradient(to bottom right, #fffbeb, #fff7ed, #fef3c7)',
+    thumbnail: null // Will use gradient
   },
   { 
     id: 'meadow', 
     name: 'Meadow', 
-    value: 'url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop")'
+    value: 'url("https://plus.unsplash.com/premium_photo-1711217237364-827b31b57e92?q=80&w=1484&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")',
+    thumbnail: 'https://plus.unsplash.com/premium_photo-1711217237364-827b31b57e92?q=80&w=200&auto=format&fit=crop'
   },
   { 
     id: 'sky', 
     name: 'Sky', 
-    value: 'url("https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2787&auto=format&fit=crop")'
+    value: 'url("https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2787&auto=format&fit=crop")',
+    thumbnail: 'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=200&auto=format&fit=crop'
   },
   { 
     id: 'wood', 
     name: 'Wood Desk', 
-    value: 'url("https://images.unsplash.com/photo-1516417156595-340d445c2525?q=80&w=2948&auto=format&fit=crop")'
-  },
-  {
-    id: 'minimal',
-    name: 'Minimal Grey',
-    value: 'linear-gradient(#f3f4f6, #f3f4f6)'
+    value: 'url("https://images.unsplash.com/photo-1437419764061-2473afe69fc2?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")',
+    thumbnail: 'https://images.unsplash.com/photo-1437419764061-2473afe69fc2?q=80&w=200&auto=format&fit=crop'
   }
 ];
+
+// Default background (not shown in options)
+export const DEFAULT_BACKGROUND = {
+  id: 'minimal',
+  name: 'Minimal Grey',
+  value: 'linear-gradient(#f3f4f6, #f3f4f6)'
+};
 
 export function JournalCover({ coverCustomization, setCoverCustomization, pageCustomization, setPageCustomization }: Props) {
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
@@ -133,7 +139,7 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
         <div 
             className="p-10 rounded-xl w-full flex justify-center items-center"
             style={{ 
-                backgroundImage: PREVIEW_BACKGROUNDS.find(b => b.id === coverCustomization.previewBackground)?.value,
+                backgroundImage: PREVIEW_BACKGROUNDS.find(b => b.id === coverCustomization.previewBackground)?.value || DEFAULT_BACKGROUND.value,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
             }}
@@ -301,56 +307,36 @@ export function JournalCover({ coverCustomization, setCoverCustomization, pageCu
             </div>
           </div>
 
-          {/* Cover Type Selection */}
-          <div className="mb-6">
-            <label className="block mb-2">Cover Type</label>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCoverCustomization({ ...coverCustomization, coverType: 'hard' })}
-                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                  coverCustomization.coverType === 'hard'
-                    ? 'border-amber-500 bg-amber-50'
-                    : 'border-gray-200 hover:border-amber-300'
-                }`}
-              >
-                Hard Cover
-              </button>
-              <button
-                onClick={() => setCoverCustomization({ ...coverCustomization, coverType: 'soft' })}
-                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                  coverCustomization.coverType === 'soft'
-                    ? 'border-amber-500 bg-amber-50'
-                    : 'border-gray-200 hover:border-amber-300'
-                }`}
-              >
-                Soft Cover
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {coverCustomization.coverType === 'hard' 
-                ? 'Hard covers are thicker and more durable with a rigid feel' 
-                : 'Soft covers are flexible and lightweight with a softer appearance'}
-            </p>
-          </div>
 
           {/* Preview Background Selection */}
           <div className="mb-6">
-             <label className="block mb-2 flex items-center gap-2">
-                 <ImageIcon className="w-4 h-4 text-amber-600" />
-                 Preview Background
-             </label>
-             <div className="grid grid-cols-2 gap-2">
+             <label className="block mb-2">Preview Background</label>
+             <div className="flex flex-wrap gap-3">
                 {PREVIEW_BACKGROUNDS.map((bg) => (
                     <button
                         key={bg.id}
                         onClick={() => setCoverCustomization({ ...coverCustomization, previewBackground: bg.id })}
-                        className={`px-3 py-2 text-sm rounded-lg border transition-all text-left ${
+                        className={`w-12 h-12 rounded-full border shadow-sm transition-transform hover:scale-110 overflow-hidden ${
                             coverCustomization.previewBackground === bg.id 
-                            ? 'border-amber-500 bg-amber-50 text-amber-900'
-                            : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                            ? 'ring-2 ring-offset-1 ring-amber-500' 
+                            : 'border-gray-200'
                         }`}
+                        title={bg.name}
                     >
-                        {bg.name}
+                        {bg.thumbnail ? (
+                            <img 
+                                src={bg.thumbnail} 
+                                alt={bg.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div 
+                                className="w-full h-full"
+                                style={{
+                                    backgroundImage: bg.value
+                                }}
+                            />
+                        )}
                     </button>
                 ))}
              </div>
